@@ -1,0 +1,49 @@
+# GPU 서버에서 모델 서버까지 같이 띄울 때
+#   python scripts/export_resnet18.py
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+services:
+  api:
+    environment:
+      TRITON_URL: http://triton:8000
+      VLLM_URL: http://vllm:8000
+    depends_on: [triton, vllm]
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:25.12-py3
+    command: tritonserver --model-repository=/models
+    volumes:
+      - ./model_repository:/models:ro
+    ports:
+      - "8000:8000"
+      - "8002:8002"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  vllm:
+    image: vllm/vllm-openai:v0.10.1.1
+    command: >
+      --model ${LLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      --gpu-memory-utilization 0.3
+      --max-model-len 2048
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    ports:
+      - "8100:8000"
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  hf-cache:

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: cafe-ai
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SEED_DEMO
+        value: "1"
+      - key: DB_PATH
+        value: /srv/data/cafe.db
