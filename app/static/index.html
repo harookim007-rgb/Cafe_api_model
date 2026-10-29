@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cafe AI 관리자</title>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#home">
+      <img src="/img/favicon.svg" alt="" width="28" height="28">
+      <span>Cafe AI</span>
+    </a>
+    <nav class="nav">
+      <a href="#home" data-view="home">대시보드</a>
+      <a href="#menus" data-view="menus">메뉴 관리</a>
+      <a href="#reviews" data-view="reviews">리뷰</a>
+      <a href="#vision" data-view="vision">이미지 분류</a>
+      <a href="#chat" data-view="chat">챗봇</a>
+    </nav>
+    <div class="server-status" id="server-status">
+      <p class="status-title">서버 상태</p>
+      <ul>
+        <li data-key="database">DB</li>
+        <li data-key="sentiment">감성 분석</li>
+        <li data-key="triton">Triton</li>
+        <li data-key="vllm">vLLM</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="content">
+    <!-- 대시보드 -->
+    <section class="view" id="view-home">
+      <header class="view-head">
+        <h1>대시보드</h1>
+        <p class="sub">오늘 들어온 리뷰와 메뉴 반응을 한눈에 봅니다.</p>
+      </header>
+      <div class="stats" id="stats">
+        <div class="stat"><span class="stat-label">메뉴</span><strong id="stat-menus">-</strong></div>
+        <div class="stat"><span class="stat-label">리뷰</span><strong id="stat-reviews">-</strong></div>
+        <div class="stat"><span class="stat-label">평균 별점</span><strong id="stat-rating">-</strong></div>
+        <div class="stat"><span class="stat-label">긍정 리뷰</span><strong id="stat-positive">-</strong></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><h2>최근 리뷰</h2><a href="#reviews" class="link">전체 보기</a></div>
+          <ul class="review-list" id="home-reviews"></ul>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>문장 감성 분석</h2></div>
+          <form id="sentiment-form" class="stack">
+            <label for="sentiment-text" class="sr-only">분석할 문장</label>
+            <textarea id="sentiment-text" rows="3" maxlength="500" placeholder="예) 라떼가 부드럽고 고소해서 또 올 것 같아요">라떼가 부드럽고 고소해서 또 올 것 같아요</textarea>
+            <button class="btn" type="submit">분석하기</button>
+          </form>
+          <div id="sentiment-result" class="sentiment-result" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 메뉴 -->
+    <section class="view" id="view-menus" hidden>
+      <header class="view-head">
+        <h1>메뉴 관리</h1>
+        <p class="sub">가격·품절 여부를 바로 바꿀 수 있어요. 리뷰 반응은 감성 점수로 표시됩니다.</p>
+      </header>
+      <form class="panel inline-form" id="menu-form">
+        <div class="field grow">
+          <label for="menu-name">메뉴 이름</label>
+          <input id="menu-name" required maxlength="40" placeholder="예) 아인슈페너">
+        </div>
+        <div class="field">
+          <label for="menu-price">가격(원)</label>
+          <input id="menu-price" type="number" required min="100" step="100" value="5000">
+        </div>
+        <div class="field">
+          <label for="menu-category">분류</label>
+          <select id="menu-category">
+            <option>커피</option><option>논커피</option><option>티</option><option>디저트</option>
+          </select>
+        </div>
+        <button class="btn" type="submit">메뉴 추가</button>
+      </form>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="chips" id="menu-filter">
+            <button type="button" class="chip active" data-cat="">전체</button>
+            <button type="button" class="chip" data-cat="커피">커피</button>
+            <button type="button" class="chip" data-cat="논커피">논커피</button>
+            <button type="button" class="chip" data-cat="티">티</button>
+            <button type="button" class="chip" data-cat="디저트">디저트</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>메뉴</th><th>분류</th><th class="num">가격</th><th class="num">리뷰</th><th>반응</th><th>품절</th><th></th></tr>
+            </thead>
+            <tbody id="menu-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 리뷰 -->
+    <section class="view" id="view-reviews" hidden>
+      <header class="view-head">
+        <h1>리뷰</h1>
+        <p class="sub">리뷰를 등록하면 긍정/부정을 자동으로 분류합니다.</p>
+      </header>
+      <div class="grid-2 wide-right">
+        <form class="panel stack" id="review-form">
+          <h2>리뷰 등록</h2>
+          <div class="field">
+            <label for="review-menu">메뉴</label>
+            <select id="review-menu" required></select>
+          </div>
+          <div class="field">
+            <label for="review-author">작성자</label>
+            <input id="review-author" required maxlength="20" placeholder="닉네임">
+          </div>
+          <div class="field">
+            <span class="label">별점</span>
+            <div class="stars" id="review-stars" role="radiogroup" aria-label="별점"></div>
+          </div>
+          <div class="field">
+            <label for="review-content">내용</label>
+            <textarea id="review-content" rows="4" required minlength="2" maxlength="500"></textarea>
+          </div>
+          <button class="btn" type="submit">등록</button>
+        </form>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>리뷰 목록</h2>
+            <div class="chips" id="review-filter">
+              <button type="button" class="chip active" data-s="">전체</button>
+              <button type="button" class="chip" data-s="긍정">긍정</button>
+              <button type="button" class="chip" data-s="부정">부정</button>
+            </div>
+          </div>
+          <ul class="review-list" id="review-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 이미지 -->
+    <section class="view" id="view-vision" hidden>
+      <header class="view-head">
+        <h1>이미지 분류</h1>
+        <p class="sub">Triton 서버의 ResNet18 모델로 사진을 분류하고, vLLM 이 결과를 설명합니다.</p>
+      </header>
+      <p class="notice" id="vision-offline" hidden>Triton 서버가 꺼져 있어요. GPU 서버에서 <code>docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d</code> 로 함께 띄워 주세요.</p>
+      <div class="grid-2">
+        <div class="panel">
+          <label class="dropzone" id="dropzone" for="image-input">
+            <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <img id="image-preview" alt="" hidden>
+            <span id="dropzone-text">사진을 끌어다 놓거나 눌러서 선택하세요<br><small>jpg · png · webp, 5MB 이하</small></span>
+          </label>
+          <div class="row">
+            <button class="btn" id="btn-classify" type="button" disabled>분류하기</button>
+            <button class="btn ghost" id="btn-describe" type="button" disabled>분류 + 설명</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>결과</h2>
+          <div id="vision-result" class="empty">사진을 올리면 상위 3개 결과가 여기에 나옵니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 챗봇 -->
+    <section class="view" id="view-chat" hidden>
+      <header class="view-head">
+        <h1>챗봇</h1>
+        <p class="sub">vLLM 으로 띄운 Qwen2.5-0.5B 모델과 대화합니다.</p>
+      </header>
+      <p class="notice" id="chat-offline" hidden>vLLM 서버가 꺼져 있어요. GPU 서버에서 함께 띄워야 대화할 수 있습니다.</p>
+      <div class="panel chat">
+        <div class="field">
+          <label for="chat-system">챗봇 역할</label>
+          <input id="chat-system" value="너는 친절한 카페 직원이야. 짧고 정확하게 대답해.">
+        </div>
+        <div class="chat-log" id="chat-log" aria-live="polite"></div>
+        <form class="chat-input" id="chat-form">
+          <label for="chat-text" class="sr-only">메시지</label>
+          <input id="chat-text" autocomplete="off" placeholder="메시지를 입력하세요">
+          <button class="btn" type="submit">보내기</button>
+          <button class="btn ghost" type="button" id="chat-clear">지우기</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>
