@@ -1,0 +1,10 @@
+name: "resnet18"
+platform: "onnxruntime_onnx"
+max_batch_size: 8
+
+input [ { name: "input"  data_type: TYPE_FP32 dims: [3, 224, 224] } ]
+output [ { name: "output" data_type: TYPE_FP32 dims: [1000] } ]
+
+dynamic_batching { max_queue_delay_microseconds: 2000 }
+
+parameters { key: "cudnn_conv_algo_search" value: { string_value: "1" } }
