@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+
+data/*.db*
+models/*.joblib
+model_repository/**/*.onnx
+*.log
+.DS_Store
