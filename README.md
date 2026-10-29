@@ -2,6 +2,8 @@
 
 카페 메뉴/리뷰 관리 + 리뷰 감성 분석, 이미지 분류(Triton), 챗봇(vLLM)
 
+Demo: https://cafe-ai-zf8u.onrender.com
+
 ![home](docs/screenshots/home.png)
 
 ## Stack
